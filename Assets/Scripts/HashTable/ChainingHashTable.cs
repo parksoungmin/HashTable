@@ -2,25 +2,20 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using UnityEngine;
 
-public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
+public class ChainingHashTable<TKey, TValue> : IDictionary<TKey, TValue>, IHashTable<TKey, TValue>
 {
     private const int DefaulttCapacity = 16;
     private const float LoadFactor = 0.75f;
-
-    private KeyValuePair<TKey, TValue>[] table; //
-    private bool[] occupied;//이 필드의 값으로 KeyVaLUpair 형의 값이 있나 없나 확인할꺼임.
+    LinkedList<KeyValuePair<TKey, TValue>>[] table;
     private int size;
     private int count;
 
-    public SimpleHashTable()
+    public ChainingHashTable()
     {
         size = DefaulttCapacity;
-        table = new KeyValuePair<TKey, TValue>[size];
-        occupied = new bool[size];
+        table = new LinkedList<KeyValuePair<TKey, TValue>>[size];
         count = 0;
     }
     public int GetIndex(TKey key) // 해쉬 함수에서 
@@ -44,29 +39,33 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
             {
                 return value;
             }
-            throw new KeyNotFoundException($"키 없음: {key}");
+            throw new KeyNotFoundException($"키 없음: {key} 벨류 {value}");
         }
         set
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
+            int index = GetIndex(key);
             if ((float)count / size > LoadFactor)
             {
                 Resize();
+                index = GetIndex(key);
             }
 
-            int index = GetIndex(key);
-            if (!occupied[index])
+
+            foreach (var kvr in table[index])
             {
-                table[index] = new KeyValuePair<TKey, TValue>(key, value);
-                occupied[index] = true;
-                count++;
+                if (kvr.Key.Equals(index))
+                {
+                    Remove(kvr);
+                    table[index].AddLast(new KeyValuePair<TKey, TValue>(key, value));
+                }
             }
-            else if (table[index].Key.Equals(key)) // 중복확인
+
+            if (table[index].First.Equals(key))
             {
                 throw new ArgumentNullException("키 중복!");
-
             }
             else
             {
@@ -82,20 +81,30 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
             var keys = new List<TKey>(count);
             for (int i = 0; i < size; i++)
             {
-                if (occupied[i])
+                foreach (var kvr in table[i])
                 {
-                    keys.Add(table[i].Key);
+                    keys.Add(kvr.Key);
                 }
             }
             return keys;
         }
     }
 
-    public ICollection<TValue> Values =>
-        Enumerable.Range(0, size)
-        .Where(x => occupied[x])
-        .Select(x => table[x].Value)
-        .ToArray();
+    public ICollection<TValue> Values
+    {
+        get
+        {
+            var values = new List<TValue>(count);
+            for (int i = 0; i < size; i++)
+            {
+                foreach (var kvr in table[i])
+                {
+                    values.Add(kvr.Value);
+                }
+            }
+            return values;
+        }
+    }
 
     public int Count => count;
 
@@ -104,25 +113,26 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
     private void Resize()
     {
         int newSize = size * 2;
-        var newTable = new KeyValuePair<TKey, TValue>[newSize];
-        var newOccupied = new bool[newSize];
+        var newTable = new LinkedList<KeyValuePair<TKey, TValue>>[newSize];
+
         for (int i = 0; i < size; i++)
         {
-            if (occupied[i])
+            if (table[i] != null)
             {
-                int newIndex = GetIndex(table[i].Key, newSize);
-                if (newOccupied[newIndex])
+                foreach (var kvr in table[i])
                 {
-                    throw new InvalidOperationException("해시 충돌!");
+                    int newIndex = GetIndex(kvr.Key, newSize);  // 새로운 크기에 맞게 재계산
+                    if (newTable[newIndex] == null)
+                    {
+                        newTable[newIndex] = new LinkedList<KeyValuePair<TKey, TValue>>();
+                    }
+                    newTable[newIndex].AddLast(kvr);
                 }
-                newTable[newIndex] = table[i];
-                newOccupied[newIndex] = true;
             }
         }
 
         size = newSize;
         table = newTable;
-        occupied = newOccupied;
     }
 
 
@@ -136,21 +146,23 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
             Resize();
         }
         int index = GetIndex(key);
-        if (!occupied[index])
+        if (table[index] == null)
         {
-            table[index] = new KeyValuePair<TKey, TValue>(key, value);
-            occupied[index] = true;
+            table[index] = new LinkedList<KeyValuePair<TKey, TValue>>();
+            table[index].AddLast(new KeyValuePair<TKey, TValue>(key, value));
             count++;
+            return;
         }
-        else if (table[index].Key.Equals(key)) // 중복확인
+        foreach (var kvr in table[index])
         {
-            table[index] = new KeyValuePair<TKey, TValue>(key, value);
+            if (kvr.Key.Equals(key)) // 중복확인
+            {
+                throw new ArgumentNullException(nameof(key));
+            }
         }
-        else
-        {
-            throw new InvalidOperationException("해시 충돌!"); // 충돌부분 임시 예외
-        }
-
+        table[index] = new LinkedList<KeyValuePair<TKey, TValue>>();
+        table[index].AddLast(new KeyValuePair<TKey, TValue>(key, value));
+        count++;
     }
     public void Add(KeyValuePair<TKey, TValue> item)
     {
@@ -161,7 +173,7 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
     {
         for (int i = 0; size > i; i++)
         {
-            occupied[i] = false;
+            table[i] = null;
         }
     }
 
@@ -170,16 +182,24 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
         return ContainsKey(item.Key);
     }
 
-    public bool ContainsKey(TKey key) // 이키가 들어와 있으면 true 없으면 false
+    public bool ContainsKey(TKey key) // 이 키가 들어와 있으면 true 없으면 false
     {
         int index = GetIndex(key);
         if (key == null)
             throw new ArgumentNullException(nameof(key));
 
-        return occupied[index] && table[index].Equals(key);
+        foreach (var kvr in table[index])
+        {
+            if (kvr.Equals(key))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+    public void CopyTo(LinkedList<KeyValuePair<TKey, TValue>>[] array, int arrayIndex)
     {
         if (array == null)
             throw new ArgumentNullException(nameof(array));
@@ -198,11 +218,11 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
         }
     }
 
-    public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+    public IEnumerator<LinkedList<KeyValuePair<TKey, TValue>>> GetEnumerator()
     {
         for (int i = 0; i < size; ++i)
         {
-            if (occupied[i])
+            if (table[i] != null)
             {
                 yield return table[i];
             }
@@ -215,16 +235,22 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
             throw new ArgumentNullException(nameof(key));
 
         int index = GetIndex(key);
-        if (occupied[index] && table[index].Equals(key))
+        foreach (var kvp in table[index])
         {
-            occupied[index] = false;
-            count--;
-            return true;
+            if (kvp.Equals(key))
+            {
+                if (table[index] != null)
+                {
+                    table[index].Remove(kvp);
+                    count--;
+                    return true;
+                }
+            }
         }
         return false;
     }
 
-    public bool Remove(KeyValuePair<TKey, TValue> item)
+    public bool Remove(LinkedList<KeyValuePair<TKey, TValue>> item)
     {
         //if (item.Key == null)
         //    throw new ArgumentNullException(nameof(item.Key));
@@ -238,7 +264,11 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
         //    return true;
         //}
         //return false;
-        return Remove(item.Key);
+        foreach (var kvp in item)
+        {
+            return Remove(kvp.Key);
+        }
+        return false;
     }
 
     public bool TryGetValue(TKey key, out TValue value)
@@ -247,10 +277,16 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
             throw new ArgumentNullException(nameof(key));
 
         int index = GetIndex(key);
-        if (occupied[index] && table[index].Key.Equals(key))
+        if (table[index] != null)
         {
-            value = table[index].Value;
-            return true;
+            foreach (var kvp in table[index])
+            {
+                if (kvp.Key.Equals(key))
+                {
+                    value = kvp.Value;
+                    return true;
+                }
+            }
         }
 
         value = default(TValue);
@@ -260,5 +296,31 @@ public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
+    }
+
+    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool Remove(KeyValuePair<TKey, TValue> item)
+    {
+        throw new NotImplementedException();
+    }
+
+    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+
+    public int GetArrayIndex(TKey key)
+    {
+        if (key == null)
+        {
+            throw new ArgumentException(nameof(key));
+        }
+
+        int hash = key.GetHashCode();
+        return Mathf.Abs(hash) % size;
     }
 }

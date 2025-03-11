@@ -4,26 +4,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 using UnityEngine;
 
-public class OpenAddressingHashTable<TKey, TValue> : IDictionary<TKey, TValue>
+public class SimpleHashTable<TKey, TValue> : IDictionary<TKey, TValue>, IHashTable<TKey, TValue>
 {
     private const int DefaulttCapacity = 16;
-    private const float LoadFactor = 0.6f;
+    private const float LoadFactor = 0.75f;
 
-    private KeyValuePair<TKey, TValue>[] table;
-    private bool[] occupied;//이 필드의 값으로 KeyValuepair 형의 값이 있나 없나 확인할꺼임.
+    private KeyValuePair<TKey, TValue>[] table; //
+    private bool[] occupied;//이 필드의 값으로 KeyVaLUpair 형의 값이 있나 없나 확인할꺼임.
     private int size;
     private int count;
-    Addressing addressing;
 
-    public OpenAddressingHashTable()
+    public SimpleHashTable()
     {
         size = DefaulttCapacity;
         table = new KeyValuePair<TKey, TValue>[size];
         occupied = new bool[size];
-        addressing = Addressing.LinearProbing;
         count = 0;
     }
     public int GetIndex(TKey key) // 해쉬 함수에서 
@@ -264,22 +261,15 @@ public class OpenAddressingHashTable<TKey, TValue> : IDictionary<TKey, TValue>
     {
         return GetEnumerator();
     }
-    public void HashCollision()
+
+    public int GetArrayIndex(TKey key)
     {
-        switch ((int)addressing)
+        if (key == null)
         {
-            case (int)Addressing.LinearProbing:
-                break;
-            case (int)Addressing.QuadraticProbing:
-                break;
-            case (int)Addressing.DoubleHashing:
-                break;
+            throw new ArgumentException(nameof(key));
         }
+
+        int hash = key.GetHashCode();
+        return Mathf.Abs(hash) % size;
     }
-}
-public enum Addressing
-{
-    LinearProbing,
-    QuadraticProbing,
-    DoubleHashing,
 }

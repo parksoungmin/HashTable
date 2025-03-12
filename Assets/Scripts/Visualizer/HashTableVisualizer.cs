@@ -34,7 +34,7 @@ public class HashTableVisualizer : MonoBehaviour
                 var ranKey = Random.Range(0, 100).ToString();
                 var ranValue = Random.Range(0, 100).ToString();
                 hashTable.Add(ranKey, ranValue);
-                var getIndexHash = (IHashTable<string, string>)hashTable;
+                var getIndexHash = (IHashTables<string, string>)hashTable;
                 var newIndex = getIndexHash.GetArrayIndex(i.ToString()).ToString();
                 if (ChackIndex(newIndex))
                 {
@@ -80,11 +80,31 @@ public class HashTableVisualizer : MonoBehaviour
         var hash = Instantiate(bucket, contant.transform);
 
         var setHash = hash.GetComponent<UiBucket>();
-        setHash.uiItem.KeyValueTextSet(keyInputField.text, valueInputField.text);
 
-        var getIndexHash = (IHashTable<string, string>)hashTable;
-        setHash.BucketTextSet(getIndexHash.GetArrayIndex(keyInputField.text.ToString()).ToString());
-        buckets.Add(hash);
+        var getIndexHash = (IHashTables<string, string>)hashTable;
+        var newIndex = getIndexHash.GetArrayIndex(keyInputField.text.ToString()).ToString();
+        if (ChackIndex(newIndex))
+        {
+            foreach (var bucket in buckets)
+            {
+                var bucketInIndex = bucket.GetComponent<UiBucket>().index;
+                if (newIndex == bucketInIndex)
+                {
+                    var newHash = Instantiate(item, bucket.transform);
+                    var newSetHash = newHash.GetComponent<UiItem>();
+                    newSetHash.KeyValueTextSet(keyInputField.text.ToString(), valueInputField.text.ToString());
+                    buckets.Add(newHash);
+                }
+            }
+        }
+        else
+        {
+            var newHash = Instantiate(bucket, contant.transform);
+            var newSetHash = newHash.GetComponent<UiBucket>();
+            newSetHash.BucketTextSet(getIndexHash.GetArrayIndex(keyInputField.text.ToString()).ToString());
+            newSetHash.uiItem.KeyValueTextSet(keyInputField.text.ToString(), valueInputField.text.ToString());
+            buckets.Add(hash);
+        }
         // 여기부터 해야함
     }
     public void RemoveButtonClick()
@@ -113,7 +133,7 @@ public class HashTableVisualizer : MonoBehaviour
     }
     public bool ChackIndex(string index)
     {
-        var getIndexHash = (IHashTable<string, string>)hashTable;
+        var getIndexHash = (IHashTables<string, string>)hashTable;
         foreach (var hash in hashTable)
         {
             if (index == getIndexHash.GetArrayIndex(hash.Key).ToString())

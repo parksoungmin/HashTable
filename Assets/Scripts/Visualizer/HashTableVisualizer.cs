@@ -34,7 +34,7 @@ public class HashTableVisualizer : MonoBehaviour
                 var ranKey = Random.Range(0, 100).ToString();
                 var ranValue = Random.Range(0, 100).ToString();
                 hashTable.Add(ranKey, ranValue);
-                var getIndexHash = (IHashTables<string, string>)hashTable;
+                var getIndexHash = (IHashTable<string, string>)hashTable;
                 var newIndex = getIndexHash.GetArrayIndex(i.ToString()).ToString();
                 if (ChackIndex(newIndex))
                 {
@@ -81,7 +81,7 @@ public class HashTableVisualizer : MonoBehaviour
 
         var setHash = hash.GetComponent<UiBucket>();
 
-        var getIndexHash = (IHashTables<string, string>)hashTable;
+        var getIndexHash = (IHashTable<string, string>)hashTable;
         var newIndex = getIndexHash.GetArrayIndex(keyInputField.text.ToString()).ToString();
         if (ChackIndex(newIndex))
         {
@@ -133,7 +133,7 @@ public class HashTableVisualizer : MonoBehaviour
     }
     public bool ChackIndex(string index)
     {
-        var getIndexHash = (IHashTables<string, string>)hashTable;
+        var getIndexHash = (IHashTable<string, string>)hashTable;
         foreach (var hash in hashTable)
         {
             if (index == getIndexHash.GetArrayIndex(hash.Key).ToString())

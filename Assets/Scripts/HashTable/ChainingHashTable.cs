@@ -300,17 +300,32 @@ public class ChainingHashTable<TKey, TValue> : IDictionary<TKey, TValue>, IHashT
 
     public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
     {
-        throw new NotImplementedException();
-    }
+        if (array == null)
+        {
+            throw new ArgumentNullException(nameof(array));
+        }
 
+        if (arrayIndex < 0 || array.Length <= arrayIndex)
+        {
+            throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+        }
+
+        if (array.Length < arrayIndex + count)
+        {
+            throw new ArgumentException("공간 부족");
+        }
+
+        int currentIndex = arrayIndex;
+
+        foreach (var kvp in this)
+        {
+            array[currentIndex] = kvp.First();
+            ++currentIndex;
+        }
+    }
     public bool Remove(KeyValuePair<TKey, TValue> item)
     {
-        throw new NotImplementedException();
-    }
-
-    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
-    {
-        throw new NotImplementedException();
+        return Remove(item.Key);
     }
 
     public int GetArrayIndex(TKey key)
@@ -322,5 +337,10 @@ public class ChainingHashTable<TKey, TValue> : IDictionary<TKey, TValue>, IHashT
 
         int hash = key.GetHashCode();
         return Mathf.Abs(hash) % size;
+    }
+
+    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+    {
+        throw new NotImplementedException();
     }
 }
